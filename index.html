@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>M2 Mobile Rent Calculator</title>
+  <style>
+    :root{--red:#d92b2b;--white:#ffffff;--muted:#666}
+    *{box-sizing:border-box;font-family:Inter,Segoe UI,Arial;margin:0;padding:0}
+    body{background:#fafafa;color:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+    .card{width:100%;max-width:960px;background:var(--white);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.08);overflow:hidden}
+    header{background:linear-gradient(90deg,var(--red),#f15a5a);color:#fff;padding:18px 22px}
+    header h1{font-size:20px;margin-bottom:6px}
+    header p{margin:0;opacity:.95;font-size:13px}
+    .container{display:grid;grid-template-columns:1fr 420px;gap:20px;padding:20px}
+    @media(max-width:900px){.container{grid-template-columns:1fr;}}
+    .panel{padding:12px}
+    .inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .field{display:flex;flex-direction:column;margin-bottom:10px}
+    label{font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type="number"],select{padding:10px;border:1px solid #e6e6e6;border-radius:8px;font-size:15px}
+    .full{grid-column:1/ -1}
+    .actions{display:flex;gap:10px;margin-top:6px;align-items:center}
+    button{background:var(--red);color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer}
+    button.secondary{background:#fff;color:var(--red);border:1px solid #f0b0b0}
+    .results{background:#fff;border-radius:10px;padding:14px;border:1px solid #f0f0f0}
+    .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #f2f2f2}
+    .row:last-child{border-bottom:0}
+    .term{display:flex;flex-direction:column}
+    .term h3{margin:0;font-size:16px}
+    .term p{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .big{font-weight:700;font-size:18px;color:var(--red)}
+    .small{font-size:12px;color:var(--muted)}
+    .footer{padding:12px 20px;background:#fafafa;border-top:1px solid #f5f5f5;font-size:13px}
+    .note{font-size:12px;color:#777;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="card" role="application">
+    <header>
+      <h1>M2 Mobile Rent Calculator</h1>
+      <p>Enter retail price and select down payment % to calculate loan and merchant-style monthly installments. Includes fixed 1000 service fee.</p>
+    </header>
+    <div class="container">
+      <div class="panel">
+        <div class="inputs">
+          <div class="field">
+            <label for="retail">Retail Price</label>
+            <input id="retail" type="number" min="0" value="37400" />
+          </div>
+          <div class="field">
+            <label for="down">Down Payment %</label>
+            <select id="down">
+              <option value="30">30%</option>
+              <option value="50">50%</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label for="months">Quick select months</label>
+            <select id="months">
+              <option value="all">Show all: 3 / 6 / 9</option>
+              <option value="3">3 months</option>
+              <option value="6">6 months</option>
+              <option value="9">9 months</option>
+            </select>
+          </div>
+          <div class="field full actions">
+            <button id="calc">Calculate</button>
+            <button class="secondary" id="reset">Reset</button>
+          </div>
+        </div>
+        <div class="note">Loan Principal = Retail × (1 - Down%) + 1000 service fee. Fixed monthly interest rates: 8.66% (3m), 8.27% (6m), 8.08% (9m).</div>
+      </div>
+
+      <div class="panel">
+        <div id="output" class="results">
+          <div class="row">
+            <div class="term"><h3>Summary</h3><p class="small">Retail, Down, Principal, Fee</p></div>
+            <div style="text-align:right">
+              <div class="small">Retail: <span id="sum-retail">—</span></div>
+              <div class="small">Down: <span id="sum-down">—</span></div>
+              <div class="small">Fee: <span id="sum-fee">1000</span></div>
+              <div class="big">Loan: <span id="sum-principal">—</span></div>
+            </div>
+          </div>
+          <div id="plans"></div>
+        </div>
+      </div>
+    </div>
+    <div class="footer">M2 Mobile — Rent calculator · Values rounded to integers.</div>
+  </div>
+
+  <script>
+    const SERVICE_FEE = 1000;
+    function roundInt(v){return Math.round(v)}
+    function calcFor(principal, monthlyRateDecimal, months){
+      var totalInstallment = principal + principal * monthlyRateDecimal * months;
+      var monthlyPayment = totalInstallment / months;
+      return {
+        months: months,
+        monthlyPayment: roundInt(monthlyPayment),
+        installmentTotal: roundInt(monthlyPayment * months),
+        interestTotal: roundInt(monthlyPayment * months - principal)
+      }
+    }
+
+    function renderPlans(principal, choice){
+      var rates = {3:0.0866, 6:0.0827, 9:0.0808};
+      var container = document.getElementById('plans');
+      container.innerHTML = '';
+
+      function makeRow(data){
+        return `
+          <div class="row">
+            <div class="term">
+              <h3>${data.months} months</h3>
+              <p class="small">Monthly / Installment total / Interest</p>
+            </div>
+            <div style="text-align:right">
+              <div class="big">${data.monthlyPayment}</div>
+              <div class="small">Total: ${data.installmentTotal}</div>
+              <div class="small">Interest: ${data.interestTotal}</div>
+            </div>
+          </div>`
+      }
+
+      if(choice==="all"){
+        [3,6,9].forEach(function(m){
+          var d = calcFor(principal, rates[m], m);
+          container.innerHTML += makeRow(d);
+        });
+      } else {
+        var m = Number(choice);
+        var d = calcFor(principal, rates[m], m);
+        container.innerHTML = makeRow(d);
+      }
+    }
+
+    document.getElementById('calc').addEventListener('click', function(){
+      var retail = Number(document.getElementById('retail').value) || 0;
+      var downPct = Number(document.getElementById('down').value) || 0;
+      var choice = document.getElementById('months').value;
+      if(retail<=0){alert('Please enter retail price');return}
+      var downAmt = retail * (downPct/100);
+      var principal = (retail - downAmt) + SERVICE_FEE;
+      renderPlans(principal, choice);
+      document.getElementById('sum-retail').innerText = retail;
+      document.getElementById('sum-down').innerText = roundInt(downAmt);
+      document.getElementById('sum-principal').innerText = roundInt(principal);
+    });
+
+    document.getElementById('reset').addEventListener('click', function(){
+      document.getElementById('retail').value = 37400;
+      document.getElementById('down').value = 30;
+      document.getElementById('months').value = 'all';
+      document.getElementById('plans').innerHTML = '';
+      document.getElementById('sum-retail').innerText = '—';
+      document.getElementById('sum-down').innerText = '—';
+      document.getElementById('sum-principal').innerText = '—';
+    });
+
+    // Initial render for example (37400, 30%)
+    var initRetail = 37400;
+    var initDownPct = 30;
+    var initDown = initRetail * initDownPct/100;
+    var initPrincipal = (initRetail - initDown) + SERVICE_FEE;
+    renderPlans(initPrincipal, 'all');
+    document.getElementById('sum-retail').innerText = initRetail;
+    document.getElementById('sum-down').innerText = roundInt(initDown);
+    document.getElementById('sum-principal').innerText = roundInt(initPrincipal);
+  </script>
+</body>
+</html>
